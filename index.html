@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stock · Cardiocentro / BBM</title>
+<style>
+:root{
+  --ink:#1b2a2e;
+  --paper:#f4faf8;
+  --line-bone:#cfe3dd;
+  --teal-deep:#0e4d46;
+  --teal:#177a6c;
+  --teal-bright:#1fae8e;
+  --amber:#c97c2c;
+  --red:#b5413a;
+  --panel:#ffffff;
+  --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
+body{
+  min-height:100vh;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(14,77,70,0.07) 1px, transparent 1px);
+  background-size:22px 22px;
+  padding-bottom:100px;
+}
+
+/* ---- Header ---- */
+header{
+  position:sticky; top:0; z-index:40;
+  background:var(--teal-deep);
+  color:var(--paper);
+  padding:14px 16px 12px;
+  border-bottom:3px solid var(--teal-bright);
+}
+.brandline{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+}
+.brand{
+  font-family:var(--mono); letter-spacing:.04em;
+  font-size:11px; text-transform:uppercase; opacity:.75;
+}
+.title{
+  font-size:20px; font-weight:800; letter-spacing:-.01em; margin:2px 0 0;
+  display:flex; align-items:center; gap:8px;
+}
+.title .dot{width:8px;height:8px;border-radius:50%;background:var(--teal-bright);box-shadow:0 0 0 4px rgba(31,174,142,0.25);}
+.subtitle{font-size:12px; opacity:.7; margin-top:2px;}
+
+/* ---- Tab bar ---- */
+nav.tabs{
+  position:sticky; top:64px; z-index:39;
+  display:flex; gap:0; background:var(--panel);
+  border-bottom:1px solid var(--line-bone);
+  overflow-x:auto;
+}
+nav.tabs button{
+  flex:1; min-width:84px; padding:10px 6px; background:none; border:none;
+  font-family:var(--sans); font-size:12px; font-weight:700; color:#6b8f88;
+  cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap;
+}
+nav.tabs button.active{ color:var(--teal-deep); border-bottom-color:var(--teal-bright); }
+
+main{ max-width:720px; margin:0 auto; padding:16px; }
+.view{ display:none; }
+.view.active{ display:block; animation:fadein .18s ease; }
+@keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+/* ---- Scan view ---- */
+.scan-card{
+  background:var(--panel); border:1px solid var(--line-bone); border-radius:14px;
+  overflow:hidden; box-shadow:0 1px 3px rgba(14,77,70,0.06);
+}
+.cam-wrap{
+  position:relative; width:100%; aspect-ratio:4/3; background:#0a1a18;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+#video{ width:100%; height:100%; object-fit:cover; display:none; }
+.cam-placeholder{
+  color:#7fb3a8; text-align:center; padding:24px; font-size:13px; line-height:1.5;
+}
+.cam-placeholder svg{ width:46px; height:46px; opacity:.6; margin-bottom:8px;}
+.scan-frame{
+  position:absolute; inset:18% 14%; border:2px solid var(--teal-bright);
+  border-radius:10px; pointer-events:none; display:none;
+  box-shadow:0 0 0 1000px rgba(0,0,0,0.28);
+}
+.scan-frame.show{display:block;}
+.scan-line{
+  position:absolute; left:6%; right:6%; top:0; height:2px;
+  background:linear-gradient(90deg, transparent, var(--teal-bright), transparent);
+  animation:sweep 1.8s linear infinite;
+}
+@keyframes sweep{ 0%{top:4%;} 50%{top:94%;} 100%{top:4%;} }
+
+.cam-controls{ display:flex; gap:8px; padding:12px; background:var(--panel); }
+.btn{
+  font-family:var(--sans); font-weight:700; font-size:13px; border:none; border-radius:10px;
+  padding:12px 14px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;
+  transition:transform .08s ease, opacity .15s ease;
+}
+.btn:active{ transform:scale(0.97); }
+.btn-primary{ background:var(--teal-deep); color:#fff; flex:1; }
+.btn-primary.stop{ background:var(--red); }
+.btn-ghost{ background:var(--line-bone); color:var(--teal-deep); }
+.btn-amber{ background:var(--amber); color:#fff; }
+.btn:disabled{ opacity:.45; cursor:default; }
+
+.manual-row{ display:flex; gap:8px; padding:0 12px 12px; }
+.manual-row input{
+  flex:1; border:1.5px solid var(--line-bone); border-radius:10px; padding:11px 12px;
+  font-family:var(--mono); font-size:14px; background:#fbfdfc; color:var(--ink);
+}
+.manual-row input:focus{ outline:none; border-color:var(--teal-bright); }
+
+/* ---- Result panel ---- */
+.result{
+  margin-top:14px; background:var(--panel); border:1px solid var(--line-bone);
+  border-radius:14px; padding:16px; display:none;
+}
+.result.show{ display:block; animation:fadein .2s ease; }
+.result.notfound{ border-color:var(--red); background:#fdf3f2; }
+.result-code{
+  font-family:var(--mono); font-size:12px; color:var(--teal); background:#e8f5f1;
+  display:inline-block; padding:3px 8px; border-radius:6px; margin-bottom:8px;
+}
+.result h3{ margin:0 0 2px; font-size:17px; color:var(--teal-deep); }
+.result .meta{ font-size:13px; color:#5b756f; margin-bottom:10px; line-height:1.5;}
+.result .meta b{ color:var(--ink); }
+.tag-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;}
+.tag{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; background:#eef6f4; color:var(--teal-deep); }
+
+.field{ margin-bottom:12px; }
+.field label{ display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#6b8f88; margin-bottom:5px;}
+.field input{
+  width:100%; border:1.5px solid var(--line-bone); border-radius:10px; padding:11px 12px;
+  font-family:var(--sans); font-size:14px; background:#fbfdfc; color:var(--ink);
+}
+.field input:focus{ outline:none; border-color:var(--teal-bright); }
+.row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+.qty-stepper{ display:flex; align-items:stretch; gap:8px; }
+.qty-stepper button{
+  width:46px; border:1.5px solid var(--line-bone); background:#fff; border-radius:10px;
+  font-size:20px; font-weight:700; color:var(--teal-deep); cursor:pointer;
+}
+.qty-stepper input{ text-align:center; font-weight:800; font-size:16px; }
+
+.notfound-box{ display:none; }
+.result.notfound .notfound-box{ display:block; }
+.result.notfound .found-box{ display:none; }
+.notfound-msg{ font-size:13px; color:var(--red); margin-bottom:10px; line-height:1.5;}
+
+.action-row{ display:flex; gap:8px; margin-top:4px;}
+
+/* ---- Stock list ---- */
+.search-bar{
+  display:flex; gap:8px; margin-bottom:12px; position:sticky; top:108px; z-index:10;
+  background:var(--paper); padding-bottom:6px;
+}
+.search-bar input{
+  flex:1; border:1.5px solid var(--line-bone); border-radius:10px; padding:11px 12px;
+  font-size:14px; background:var(--panel);
+}
+.search-bar input:focus{outline:none; border-color:var(--teal-bright);}
+
+.summary-strip{ display:flex; gap:8px; margin-bottom:14px; }
+.summary-card{
+  flex:1; background:var(--panel); border:1px solid var(--line-bone); border-radius:12px;
+  padding:10px 12px; text-align:center;
+}
+.summary-card .num{ font-family:var(--mono); font-size:20px; font-weight:800; color:var(--teal-deep); }
+.summary-card .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:#6b8f88; margin-top:2px;}
+.summary-card.alert .num{ color:var(--red); }
+
+.stock-item{
+  background:var(--panel); border:1px solid var(--line-bone); border-radius:12px;
+  padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:12px;
+  cursor:pointer;
+}
+.stock-item .sw{ flex:1; min-width:0; }
+.stock-item h4{ margin:0; font-size:14px; color:var(--ink); }
+.stock-item .sub{ font-size:11.5px; color:#6b8f88; margin-top:2px; font-family:var(--mono);}
+.stock-item .qtybadge{
+  font-family:var(--mono); font-weight:800; font-size:16px; min-width:40px; text-align:center;
+  padding:6px 10px; border-radius:8px; background:#eef6f4; color:var(--teal-deep);
+}
+.stock-item.low .qtybadge{ background:#fbe9e7; color:var(--red); }
+.empty-state{ text-align:center; padding:48px 20px; color:#6b8f88; font-size:13px; }
+.empty-state svg{ width:40px;height:40px; opacity:.5; margin-bottom:8px;}
+
+/* ---- Catalog browse ---- */
+.cat-section{ margin-bottom:18px; }
+.cat-section h3{
+  font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--teal);
+  margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line-bone);
+}
+.cat-item{
+  padding:9px 0; border-bottom:1px dashed var(--line-bone); font-size:13.5px;
+  display:flex; justify-content:space-between; gap:10px; cursor:pointer;
+}
+.cat-item:active{ background:#f0f8f6; }
+.cat-item .ci-name{ flex:1; }
+.cat-item .ci-name b{ display:block; color:var(--ink); }
+.cat-item .ci-name span{ color:#6b8f88; font-size:12px; }
+.cat-item .ci-code{ font-family:var(--mono); font-size:11.5px; color:var(--teal); white-space:nowrap; }
+
+/* ---- Toast ---- */
+.toast{
+  position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+  background:var(--teal-deep); color:#fff; padding:12px 20px; border-radius:30px;
+  font-size:13px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease;
+  z-index:100; display:flex; align-items:center; gap:8px; box-shadow:0 6px 20px rgba(0,0,0,.2);
+  max-width:90%;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.err{ background:var(--red); }
+
+.helptext{ font-size:11.5px; color:#6b8f88; margin-top:8px; line-height:1.5; padding:0 2px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brandline">
+    <span class="brand">Laboratorio BBM · LC Cardiocentro</span>
+  </div>
+  <div class="title"><span class="dot"></span>Control de Stock</div>
+  <div class="subtitle">Reactivos Wiener lab. — escaneo y gestión</div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-view="scan">Escanear</button>
+  <button class="tab-btn" data-view="stock">Mi stock</button>
+  <button class="tab-btn" data-view="catalog">Catálogo</button>
+</nav>
+
+<main>
+
+  <!-- SCAN VIEW -->
+  <section class="view active" id="view-scan">
+    <div class="scan-card">
+      <div class="cam-wrap">
+        <video id="video" playsinline muted></video>
+        <div class="cam-placeholder" id="camPlaceholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg>
+          <div>Tocá "Iniciar cámara" para escanear el código de barras del reactivo</div>
+        </div>
+        <div class="scan-frame" id="scanFrame"><div class="scan-line"></div></div>
+      </div>
+      <div class="cam-controls">
+        <button class="btn btn-primary" id="btnCam">▶ Iniciar cámara</button>
+      </div>
+      <div class="manual-row">
+        <input type="text" id="manualCode" placeholder="o ingresá el código manualmente (ej: 1009298)" inputmode="numeric">
+        <button class="btn btn-amber" id="btnManual">Buscar</button>
+      </div>
+    </div>
+
+    <div class="result" id="resultPanel">
+      <div class="found-box">
+        <div class="result-code" id="rCode">—</div>
+        <h3 id="rProducto">—</h3>
+        <div class="meta" id="rMeta">—</div>
+        <div class="tag-row" id="rTags"></div>
+
+        <div class="row2">
+          <div class="field">
+            <label>N° de Lote</label>
+            <input type="text" id="fLote" placeholder="ej: A2451">
+          </div>
+          <div class="field">
+            <label>Vencimiento</label>
+            <input type="date" id="fVto">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Cantidad a sumar al stock</label>
+          <div class="qty-stepper">
+            <button id="qtyMinus" type="button">−</button>
+            <input type="number" id="fQty" value="1" min="1">
+            <button id="qtyPlus" type="button">+</button>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-primary" id="btnAddStock" style="flex:1;">＋ Agregar al stock</button>
+        </div>
+      </div>
+
+      <div class="notfound-box">
+        <div class="result-code" id="nfCode">—</div>
+        <div class="notfound-msg">No encontramos este código en el catálogo Wiener cargado. Puede ser un código de lote/serie en vez del código de catálogo, o un producto que todavía no agregamos a la base.</div>
+        <div class="field">
+          <label>Buscar manualmente por nombre</label>
+          <input type="text" id="nfSearch" placeholder="ej: glucosa, urea, HbA1c...">
+        </div>
+        <div id="nfResults"></div>
+      </div>
+    </div>
+
+    <div class="helptext">El escáner lee códigos lineales (EAN-13, Code128, Code39) apuntando la cámara al código del envase. Si el envase no tiene barras o no se reconoce, usá la búsqueda manual por código o por nombre.</div>
+  </section>
+
+  <!-- STOCK VIEW -->
+  <section class="view" id="view-stock">
+    <div class="summary-strip">
+      <div class="summary-card"><div class="num" id="sumItems">0</div><div class="lbl">Ítems</div></div>
+      <div class="summary-card"><div class="num" id="sumUnits">0</div><div class="lbl">Unidades</div></div>
+      <div class="summary-card alert"><div class="num" id="sumLow">0</div><div class="lbl">Bajo mínimo</div></div>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="stockSearch" placeholder="Buscar en mi stock...">
+    </div>
+    <div id="stockList"></div>
+  </section>
+
+  <!-- CATALOG VIEW -->
+  <section class="view" id="view-catalog">
+    <div class="search-bar">
+      <input type="text" id="catSearch" placeholder="Buscar en catálogo Wiener (244 referencias)...">
+    </div>
+    <div id="catList"></div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script id="reactivos-data" type="application/json">[{"id":1,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Ácido Úrico","producto":"Uric Acid fast","codigo":"1009298","linea":"CB Series","metodo":"Enzimático - Uricasa","presentacion":"4 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":2,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Ácido Úrico","producto":"Uric Acid fast","codigo":"1009403","linea":"CT Series","metodo":"Enzimático - Uricasa","presentacion":"4 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":3,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Ácido Úrico","producto":"Uric Acid fast","codigo":"1009713","linea":"CMD Series","metodo":"Enzimático - Uricasa","presentacion":"3 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":4,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Ácido Úrico","producto":"Uric Acid fast","codigo":"1008164","linea":"CM Series","metodo":"Enzimático - Uricasa","presentacion":"3 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":5,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Ácido Úrico","producto":"Uricostat enzimático AA líquida","codigo":"1009277","linea":"CB Series","metodo":"Enzimático - Uricasa","presentacion":"8 x 40 mL + 4 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":6,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Ácido Úrico","producto":"Uricostat enzimático AA líquida","codigo":"1009635","linea":"CMD Series","metodo":"Enzimático - Uricasa","presentacion":"3 x 60 mL + 3 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":7,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Albúmina","producto":"Albúmina AA","codigo":"1009240","linea":"CB Series","metodo":"Colorimétrico - BCG","presentacion":"8 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":8,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Albúmina","producto":"Albúmina AA","codigo":"1009601","linea":"CMD Series","metodo":"Colorimétrico - BCG","presentacion":"6 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":9,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Albúmina","producto":"Albúmina AA","codigo":"1009300","linea":"CT Series","metodo":"Colorimétrico - BCG","presentacion":"6 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":10,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Amonio","producto":"Ammonia","codigo":"1008146","linea":"CM Series","metodo":"Enzimático - GLDH","presentacion":"1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":11,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Amonio","producto":"Ammonia","codigo":"1009693","linea":"CMD Series","metodo":"Enzimático - GLDH","presentacion":"1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":12,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Bilirrubina Directa","producto":"Bilirrubina Directa AA líquida","codigo":"1009246","linea":"CB Series","metodo":"Colorimétrico - DPD","presentacion":"4 x 50 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":13,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Bilirrubina Directa","producto":"Bilirrubina Directa AA líquida","codigo":"1009604","linea":"CMD Series","metodo":"Colorimétrico - DPD","presentacion":"4 x 50 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":14,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Bilirrubina Directa","producto":"Bilirrubina Directa AA líquida","codigo":"1009335","linea":"CT Series","metodo":"Colorimétrico - DPD","presentacion":"4 x 50 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":15,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Bilirrubina Total","producto":"Bilirrubina Total AA líquida","codigo":"1009244","linea":"CB Series","metodo":"Colorimétrico - DPD","presentacion":"4 x 50 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":16,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Bilirrubina Total","producto":"Bilirrubina Total AA líquida","codigo":"1009605","linea":"CMD Series","metodo":"Colorimétrico - DPD","presentacion":"4 x 50 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":17,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Bilirrubina Total","producto":"Bilirrubina Total AA líquida","codigo":"1009334","linea":"CT Series","metodo":"Colorimétrico - DPD","presentacion":"4 x 50 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":18,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Colesterol","producto":"Colestat enzimático AA líquida","codigo":"1009253","linea":"CB Series","metodo":"Enzimático - CHOD/POD","presentacion":"12 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":19,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Colesterol","producto":"Colestat enzimático AA líquida","codigo":"1009610","linea":"CMD Series","metodo":"Enzimático - CHOD/POD","presentacion":"6 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":20,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Colesterol","producto":"Colestat enzimático AA líquida","codigo":"1009308","linea":"CT Series","metodo":"Enzimático - CHOD/POD","presentacion":"6 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":21,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Creatinina","producto":"Creatinina cinética AA líquida","codigo":"1009254","linea":"CB Series","metodo":"Cinético - Jaffe","presentacion":"4 x 40 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":22,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Creatinina","producto":"Creatinina cinética AA líquida","codigo":"1009611","linea":"CMD Series","metodo":"Cinético - Jaffe","presentacion":"4 x 60 mL + 3 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":23,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Creatinina","producto":"Creatinina cinética AA líquida","codigo":"1009329","linea":"CT Series","metodo":"Cinético - Jaffe","presentacion":"4 x 40 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":24,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Creatinina","producto":"Creatinina enzimática AA líquida","codigo":"1009612","linea":"CMD Series","metodo":"Enzimático - Creatinasa/POD","presentacion":"3 x 20 mL + 3 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":25,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Dióxido de Carbono","producto":"Carbon Dioxide","codigo":"1008148","linea":"CM Series","metodo":"Enzimático - PEPC/MDH","presentacion":"1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":26,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Dióxido de Carbono","producto":"Carbon Dioxide","codigo":"1009671","linea":"CMD Series","metodo":"Enzimático - PEPC/MDH","presentacion":"1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":27,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Fructosamina","producto":"Fructosamina AA líquida","codigo":"1009281","linea":"CB Series","metodo":"Colorimétrico - NBT","presentacion":"4 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":28,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Fructosamina","producto":"Fructosamina AA líquida","codigo":"1009615","linea":"CMD Series","metodo":"Colorimétrico - NBT","presentacion":"4 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":29,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Glucosa","producto":"Glicemia enzimática AA líquida","codigo":"1009260","linea":"CB Series","metodo":"Enzimático - GOD/POD","presentacion":"12 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":30,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Glucosa","producto":"Glicemia enzimática AA líquida","codigo":"1009617","linea":"CMD Series","metodo":"Enzimático - GOD/POD","presentacion":"6 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":31,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Glucosa","producto":"Glicemia enzimática AA líquida","codigo":"1009313","linea":"CT Series","metodo":"Enzimático - GOD/POD","presentacion":"6 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":32,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Glucosa","producto":"Glucose HK","codigo":"1009618","linea":"CMD Series","metodo":"Enzimático - Hexoquinasa","presentacion":"8 x 50 mL + 4 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":33,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"HDL Colesterol","producto":"HDL Cholesterol fast","codigo":"1008102","linea":"CM Series","metodo":"Colorimétrico homogéneo","presentacion":"3 x 30 mL + 3 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":34,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"HDL Colesterol","producto":"HDL Colesterol monofase AA plus v2","codigo":"1009264","linea":"CB Series","metodo":"Colorimétrico homogéneo","presentacion":"2 x 30 mL + 2 x 10 mL + 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":35,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"HDL Colesterol","producto":"HDL Colesterol monofase AA plus v2","codigo":"1009702","linea":"CMD Series","metodo":"Colorimétrico homogéneo","presentacion":"2 x 60 mL + 2 x 20 mL + 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":36,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"HDL Colesterol","producto":"HDL Colesterol monofase AA plus v2","codigo":"1009401","linea":"CT Series","metodo":"Colorimétrico homogéneo","presentacion":"2 x 30 mL + 2 x 10 mL + 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":37,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Hemoglobina Glicosilada","producto":"HbA1c enzymatic","codigo":"1009621","linea":"CMD Series","metodo":"Enzimático - POD","presentacion":"1 x 36 mL + 1 x 16 mL + 2 x 12 mL","stock_actual":0,"stock_minimo":1},{"id":38,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Hemoglobina Glicosilada","producto":"HbA1c enzymatic","codigo":"1009368","linea":"CT Series","metodo":"Enzimático - POD","presentacion":"1 x 18 mL + 1 x 8 mL + 1 x 12 mL","stock_actual":0,"stock_minimo":1},{"id":39,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Homocisteína","producto":"Homocysteine","codigo":"1008151","linea":"CM Series","metodo":"Enzimático UV","presentacion":"1 x 30 mL + 1 x 3 mL","stock_actual":0,"stock_minimo":1},{"id":40,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Homocisteína","producto":"Homocysteine","codigo":"1009623","linea":"CMD Series","metodo":"Enzimático UV","presentacion":"1 x 50 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":41,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Lactato","producto":"Lactate","codigo":"1008117","linea":"CM Series","metodo":"Enzimático - POD","presentacion":"1 x 35 mL + 1 x 7 mL","stock_actual":0,"stock_minimo":1},{"id":42,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Lactato","producto":"Lactate","codigo":"1009668","linea":"CMD Series","metodo":"Enzimático - POD","presentacion":"1 x 20 mL + 1 x 4 mL","stock_actual":0,"stock_minimo":1},{"id":43,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"LDL Colesterol","producto":"LDL Colesterol monofase AA","codigo":"1009283","linea":"CB Series","metodo":"Colorimétrico homogéneo","presentacion":"2 x 30 mL + 2 x 10 mL + 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":44,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"LDL Colesterol","producto":"LDL Colesterol monofase AA","codigo":"1009627","linea":"CMD Series","metodo":"Colorimétrico homogéneo","presentacion":"2 x 60 mL + 2 x 20 mL + 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":45,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"LDL Colesterol","producto":"LDL Colesterol monofase AA","codigo":"1009348","linea":"CT Series","metodo":"Colorimétrico homogéneo","presentacion":"2 x 30 mL + 2 x 10 mL + 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":46,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Proteínas Totales","producto":"Proteínas Totales AA","codigo":"1009273","linea":"CB Series","metodo":"Colorimétrico - Biuret","presentacion":"10 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":47,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Proteínas Totales","producto":"Proteínas Totales AA","codigo":"1009630","linea":"CMD Series","metodo":"Colorimétrico - Biuret","presentacion":"10 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":48,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Proteínas Totales","producto":"Proteínas Totales AA","codigo":"1009327","linea":"CT Series","metodo":"Colorimétrico - Biuret","presentacion":"10 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":49,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Proteínas Urinarias/LCR","producto":"Proti U/LCR","codigo":"1009282","linea":"CB Series","metodo":"Colorimétrico - Rojo de Pirogalol","presentacion":"4 x 20 mL + 4 mL cal","stock_actual":0,"stock_minimo":1},{"id":50,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Proteínas Urinarias/LCR","producto":"Proti U/LCR","codigo":"1009631","linea":"CMD Series","metodo":"Colorimétrico - Rojo de Pirogalol","presentacion":"2 x 60 mL + 4 mL cal","stock_actual":0,"stock_minimo":1},{"id":51,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Proteínas Urinarias/LCR","producto":"Proti U/LCR","codigo":"1009317","linea":"CT Series","metodo":"Colorimétrico - Rojo de Pirogalol","presentacion":"4 x 20 mL + 4 mL cal","stock_actual":0,"stock_minimo":1},{"id":52,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Triglicéridos","producto":"TG Color GPO/PAP AA líquida","codigo":"1009274","linea":"CB Series","metodo":"Enzimático - GPO/PAP","presentacion":"8 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":53,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Triglicéridos","producto":"TG Color GPO/PAP AA líquida","codigo":"1009632","linea":"CMD Series","metodo":"Enzimático - GPO/PAP","presentacion":"4 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":54,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Triglicéridos","producto":"TG Color GPO/PAP AA líquida","codigo":"1009318","linea":"CT Series","metodo":"Enzimático - GPO/PAP","presentacion":"4 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":55,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Urea","producto":"Urea UV cinética AA líquida","codigo":"1009275","linea":"CB Series","metodo":"Cinético UV - Ureasa/GLDH","presentacion":"8 x 40 mL + 4 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":56,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Urea","producto":"Urea UV cinética AA líquida","codigo":"1009634","linea":"CMD Series","metodo":"Cinético UV - Ureasa/GLDH","presentacion":"4 x 60 mL + 1 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":57,"seccion":"Química Clínica","subseccion":"Metabolitos","analito":"Urea","producto":"Urea UV cinética AA líquida","codigo":"1009319","linea":"CT Series","metodo":"Cinético UV - Ureasa/GLDH","presentacion":"3 x 60 mL + 3 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":58,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Alanina Aminotransferasa (ALT)","producto":"GPT (ALT) UV AA líquida","codigo":"1009263","linea":"CB Series","metodo":"UV optimizado - IFCC","presentacion":"4 x 50 mL + 4 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":59,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Alanina Aminotransferasa (ALT)","producto":"GPT (ALT) UV AA líquida","codigo":"1009620","linea":"CMD Series","metodo":"UV optimizado - IFCC","presentacion":"4 x 50 mL + 4 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":60,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Alanina Aminotransferasa (ALT)","producto":"GPT (ALT) UV AA líquida","codigo":"1009322","linea":"CT Series","metodo":"UV optimizado - IFCC","presentacion":"4 x 50 mL + 4 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":61,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Amilasa","producto":"Amilasa 405 AA líquida","codigo":"1009243","linea":"CB Series","metodo":"Cinético - CNPG3","presentacion":"4 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":62,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Amilasa","producto":"Amilasa 405 AA líquida","codigo":"1009603","linea":"CMD Series","metodo":"Cinético - CNPG3","presentacion":"4 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":63,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Amilasa","producto":"Amilasa 405 AA líquida","codigo":"1009326","linea":"CT Series","metodo":"Cinético - CNPG3","presentacion":"3 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":64,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Aspartato Aminotransferasa (AST)","producto":"GOT (AST) UV AA líquida","codigo":"1009261","linea":"CB Series","metodo":"UV optimizado - IFCC","presentacion":"4 x 50 mL + 4 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":65,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Aspartato Aminotransferasa (AST)","producto":"GOT (AST) UV AA líquida","codigo":"1009619","linea":"CMD Series","metodo":"UV optimizado - IFCC","presentacion":"4 x 50 mL + 4 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":66,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Aspartato Aminotransferasa (AST)","producto":"GOT (AST) UV AA líquida","codigo":"1009321","linea":"CT Series","metodo":"UV optimizado - IFCC","presentacion":"4 x 50 mL + 4 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":67,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Colinesterasa","producto":"Cholinesterase","codigo":"1009278","linea":"CB Series","metodo":"Cinético - Butirilcolina","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":68,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Colinesterasa","producto":"Cholinesterase","codigo":"1009607","linea":"CMD Series","metodo":"Cinético - Butirilcolina","presentacion":"2 x 50 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":69,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Colinesterasa","producto":"Cholinesterase","codigo":"1009350","linea":"CT Series","metodo":"Cinético - Butirilcolina","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":70,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Creatina Kinasa","producto":"CK-NAC UV AA líquida","codigo":"1009251","linea":"CB Series","metodo":"Cinético UV - IFCC","presentacion":"5 x 20 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":71,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Creatina Kinasa","producto":"CK-NAC UV AA líquida","codigo":"1009609","linea":"CMD Series","metodo":"Cinético UV - IFCC","presentacion":"4 x 50 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":72,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Creatina Kinasa","producto":"CK-NAC UV AA líquida","codigo":"1009331","linea":"CT Series","metodo":"Cinético UV - IFCC","presentacion":"5 x 20 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":73,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Creatina Kinasa Isoenzima MB","producto":"CK-MB NAC UV AA líquida","codigo":"1009249","linea":"CB Series","metodo":"Inmunológico UV - IFCC","presentacion":"5 x 20 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":74,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Creatina Kinasa Isoenzima MB","producto":"CK-MB NAC UV AA líquida","codigo":"1009608","linea":"CMD Series","metodo":"Inmunológico UV - IFCC","presentacion":"2 x 50 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":75,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Creatina Kinasa Isoenzima MB","producto":"CK-MB NAC UV AA líquida","codigo":"1009333","linea":"CT Series","metodo":"Inmunológico UV - IFCC","presentacion":"3 x 17 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":76,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Fosfatasa Alcalina","producto":"ALP 405 AA líquida","codigo":"1009241","linea":"CB Series","metodo":"Cinético - DGKC y SSCC","presentacion":"4 x 20 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":77,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Fosfatasa Alcalina","producto":"ALP 405 AA líquida","codigo":"1009602","linea":"CMD Series","metodo":"Cinético - DGKC y SSCC","presentacion":"8 x 20 mL + 2 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":78,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Fosfatasa Alcalina","producto":"ALP 405 AA líquida","codigo":"1009301","linea":"CT Series","metodo":"Cinético - DGKC y SSCC","presentacion":"5 x 20 mL + 2 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":79,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Fosfatasa Ácida","producto":"Fosfatasa Acida Total y Prostática cinética","codigo":"1009669","linea":"CMD Series","metodo":"Cinético - Fast Red","presentacion":"1 x 40 mL A + 20 x 2 mL B + 1 x 40 mL C + 1 x 5 mL D","stock_actual":0,"stock_minimo":1},{"id":80,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"γ-Glutamil Transferasa","producto":"γ-G-test cinética AA líquida","codigo":"1009258","linea":"CB Series","metodo":"Szasz modificado - IFCC","presentacion":"4 x 20 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":81,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"γ-Glutamil Transferasa","producto":"γ-G-test cinética AA líquida","codigo":"1009616","linea":"CMD Series","metodo":"Szasz modificado - IFCC","presentacion":"5 x 20 mL + 2 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":82,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"γ-Glutamil Transferasa","producto":"γ-G-test cinética AA líquida","codigo":"1009330","linea":"CT Series","metodo":"Szasz modificado - IFCC","presentacion":"4 x 20 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":83,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lactato Deshidrogenasa","producto":"LDH-L","codigo":"1009213","linea":"CB Series","metodo":"UV optimizado - IFCC","presentacion":"2 x 50 mL + 2 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":84,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lactato Deshidrogenasa","producto":"LDH-L","codigo":"1009625","linea":"CMD Series","metodo":"UV optimizado - IFCC","presentacion":"2 x 60 mL + 2 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":85,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lactato Deshidrogenasa","producto":"LDH-L","codigo":"1009364","linea":"CT Series","metodo":"UV optimizado - IFCC","presentacion":"2 x 60 mL + 2 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":86,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lactato Deshidrogenasa","producto":"LDH-P UV AA líquida","codigo":"1009267","linea":"CB Series","metodo":"UV optimizado - SFBC","presentacion":"4 x 20 mL + 1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":87,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lactato Deshidrogenasa","producto":"LDH-P UV AA líquida","codigo":"1009626","linea":"CMD Series","metodo":"UV optimizado - SFBC","presentacion":"2 x 60 mL + 2 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":88,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lactato Deshidrogenasa","producto":"LDH-P UV AA líquida","codigo":"1009315","linea":"CT Series","metodo":"UV optimizado - SFBC","presentacion":"5 x 20 mL + 2 x 12,5 mL","stock_actual":0,"stock_minimo":1},{"id":89,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lipasa","producto":"Lipasa AA líquida","codigo":"1009284","linea":"CB Series","metodo":"Colorimétrico","presentacion":"1 x 20 mL + 1 x 12 mL","stock_actual":0,"stock_minimo":1},{"id":90,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lipasa","producto":"Lipasa AA líquida","codigo":"1009628","linea":"CMD Series","metodo":"Colorimétrico","presentacion":"2 x 20 mL + 2 x 12 mL","stock_actual":0,"stock_minimo":1},{"id":91,"seccion":"Química Clínica","subseccion":"Enzimas","analito":"Lipasa","producto":"Lipasa AA líquida","codigo":"1009339","linea":"CT Series","metodo":"Colorimétrico","presentacion":"1 x 20 mL + 1 x 12 mL","stock_actual":0,"stock_minimo":1},{"id":92,"seccion":"Química Clínica","subseccion":"Iones","analito":"Calcio","producto":"Ca-Color Arsenazo III AA","codigo":"1009248","linea":"CB Series","metodo":"Colorimétrico - Arsenazo III","presentacion":"8 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":93,"seccion":"Química Clínica","subseccion":"Iones","analito":"Calcio","producto":"Ca-Color Arsenazo III AA","codigo":"1009606","linea":"CMD Series","metodo":"Colorimétrico - Arsenazo III","presentacion":"8 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":94,"seccion":"Química Clínica","subseccion":"Iones","analito":"Calcio","producto":"Ca-Color Arsenazo III AA","codigo":"1009307","linea":"CT Series","metodo":"Colorimétrico - Arsenazo III","presentacion":"8 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":95,"seccion":"Química Clínica","subseccion":"Iones","analito":"Fósforo","producto":"Fosfatemia UV AA","codigo":"1009256","linea":"CB Series","metodo":"UV - Molibdato","presentacion":"6 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":96,"seccion":"Química Clínica","subseccion":"Iones","analito":"Fósforo","producto":"Fosfatemia UV AA","codigo":"1009614","linea":"CMD Series","metodo":"UV - Molibdato","presentacion":"6 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":97,"seccion":"Química Clínica","subseccion":"Iones","analito":"Fósforo","producto":"Fosfatemia UV AA","codigo":"1009311","linea":"CT Series","metodo":"UV - Molibdato","presentacion":"4 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":98,"seccion":"Química Clínica","subseccion":"Iones","analito":"Hierro","producto":"Fer-color AA líquida","codigo":"1009285","linea":"CB Series","metodo":"Colorimétrico - Ferene","presentacion":"2 x 50 mL + 2 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":99,"seccion":"Química Clínica","subseccion":"Iones","analito":"Hierro","producto":"Fer-color AA líquida","codigo":"1009613","linea":"CMD Series","metodo":"Colorimétrico - Ferene","presentacion":"2 x 50 mL + 2 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":100,"seccion":"Química Clínica","subseccion":"Iones","analito":"Hierro","producto":"Fer-color AA líquida","codigo":"1009336","linea":"CT Series","metodo":"Colorimétrico - Ferene","presentacion":"2 x 50 mL + 2 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":101,"seccion":"Química Clínica","subseccion":"Iones","analito":"Litio","producto":"Lithium","codigo":"1009705","linea":"CMD Series","metodo":"Colorimétrico","presentacion":"1 x 20 mL","stock_actual":0,"stock_minimo":1},{"id":102,"seccion":"Química Clínica","subseccion":"Iones","analito":"Magnesio","producto":"Magnesium CPZ","codigo":"1009289","linea":"CB Series","metodo":"Colorimétrico - CPZ","presentacion":"2 x 50 mL + 2 x 9 mL","stock_actual":0,"stock_minimo":1},{"id":103,"seccion":"Química Clínica","subseccion":"Iones","analito":"Magnesio","producto":"Magnesium CPZ","codigo":"1009629","linea":"CMD Series","metodo":"Colorimétrico - CPZ","presentacion":"2 x 60 mL + 2 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":104,"seccion":"Química Clínica","subseccion":"Iones","analito":"Magnesio","producto":"Magnesium CPZ","codigo":"1009367","linea":"CT Series","metodo":"Colorimétrico - CPZ","presentacion":"2 x 60 mL + 2 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":105,"seccion":"Química Clínica","subseccion":"Iones","analito":"UIBC","producto":"UIBC/TIBC AA líquida","codigo":"1009286","linea":"CB Series","metodo":"Colorimétrico - Ferrozina","presentacion":"3 x 20 mL + 3 x 4 mL","stock_actual":0,"stock_minimo":1},{"id":106,"seccion":"Química Clínica","subseccion":"Iones","analito":"UIBC","producto":"UIBC/TIBC AA líquida","codigo":"1009633","linea":"CMD Series","metodo":"Colorimétrico - Ferrozina","presentacion":"3 x 20 mL + 3 x 4 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":107,"seccion":"Química Clínica","subseccion":"Iones","analito":"UIBC","producto":"UIBC/TIBC AA líquida","codigo":"1009340","linea":"CT Series","metodo":"Colorimétrico - Ferrozina","presentacion":"3 x 20 mL + 3 x 4 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":108,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"ASO","producto":"ASO látex Turbitest AA","codigo":"1009221","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 12 mL + 1 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":109,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"ASO","producto":"ASO látex Turbitest AA","codigo":"1009641","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 12 mL + 1 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":110,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"ASO","producto":"ASO látex Turbitest AA","codigo":"1009349","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 12 mL + 1 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":111,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"C3 Complemento","producto":"C3 Turbitest AA","codigo":"1009215","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":112,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"C3 Complemento","producto":"C3 Turbitest AA","codigo":"1009643","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":113,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"C3 Complemento","producto":"C3 Turbitest AA","codigo":"1009342","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":114,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"C4 Complemento","producto":"C4 Turbitest AA","codigo":"1009216","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":115,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"C4 Complemento","producto":"C4 Turbitest AA","codigo":"1009644","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":116,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"C4 Complemento","producto":"C4 Turbitest AA","codigo":"1009343","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":117,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Cistatina C","producto":"Cystatin C Turbitest AA","codigo":"1009646","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 20 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":118,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Cistatina C","producto":"Cystatin C Turbitest AA","codigo":"1009366","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 40 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":119,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Dímero D","producto":"D-Dimer Turbitest AA","codigo":"1009711","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"10 mL A + 10 mL B + 10 mL C + 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":120,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Factor Reumatoideo","producto":"FR látex Turbitest AA","codigo":"1009222","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 30 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":121,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Factor Reumatoideo","producto":"FR látex Turbitest AA","codigo":"1009648","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 30 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":122,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Factor Reumatoideo","producto":"FR látex Turbitest AA","codigo":"1009302","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 30 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":123,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Ferritina","producto":"Ferritin Turbitest AA","codigo":"1009675","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 30 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":124,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Fibrinógeno","producto":"Fibrinogen Turbitest AA","codigo":"1009647","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":125,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Fibrinógeno","producto":"Fibrinogen Turbitest AA","codigo":"1009363","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":126,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Hemoglobina Glicosilada","producto":"HbA1c v.2 Turbitest AA","codigo":"1009270","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"2 x 50 mL + 2 x 10 mL + 2 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":127,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Hemoglobina Glicosilada","producto":"HbA1c v.2 Turbitest AA","codigo":"1009651","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"2 x 60 mL + 2 x 12 mL + 2 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":128,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Hemoglobina Glicosilada","producto":"HbA1c v.2 Turbitest AA","codigo":"1009385","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"2 x 52 mL + 2 x 12 mL + 2 x 52 mL","stock_actual":0,"stock_minimo":1},{"id":129,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgA","producto":"IgA Turbitest AA","codigo":"1009217","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":130,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgA","producto":"IgA Turbitest AA","codigo":"1009667","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":131,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgA","producto":"IgA Turbitest AA","codigo":"1009344","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":132,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgE","producto":"IgE Turbitest AA","codigo":"1009704","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 30 mL + 1 x 15 mL","stock_actual":0,"stock_minimo":1},{"id":133,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgG","producto":"IgG Turbitest AA","codigo":"1009219","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":134,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgG","producto":"IgG Turbitest AA","codigo":"1009652","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":135,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgG","producto":"IgG Turbitest AA","codigo":"1009346","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":136,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgM","producto":"IgM Turbitest AA","codigo":"1009218","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":137,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgM","producto":"IgM Turbitest AA","codigo":"1009653","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":138,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"IgM","producto":"IgM Turbitest AA","codigo":"1009345","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":139,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Microalbúmina","producto":"Microalbúmina Turbitest AA","codigo":"1009276","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":140,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Microalbúmina","producto":"Microalbúmina Turbitest AA","codigo":"1009656","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":141,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Microalbúmina","producto":"Microalbúmina Turbitest AA","codigo":"1009338","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":142,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"PCR","producto":"CRP hs Turbitest AA","codigo":"1009230","linea":"CB Series","metodo":"Turbidimétrico - Alta Sensibilidad","presentacion":"1 x 30 mL + 1 x 30 mL","stock_actual":0,"stock_minimo":1},{"id":143,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"PCR","producto":"CRP hs Turbitest AA","codigo":"1009677","linea":"CMD Series","metodo":"Turbidimétrico - Alta Sensibilidad","presentacion":"1 x 60 mL + 1 x 60 mL","stock_actual":0,"stock_minimo":1},{"id":144,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"PCR","producto":"CRP hs Turbitest AA","codigo":"1009379","linea":"CT Series","metodo":"Turbidimétrico - Alta Sensibilidad","presentacion":"1 x 30 mL + 1 x 30 mL","stock_actual":0,"stock_minimo":1},{"id":145,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Transferrina","producto":"TRF Turbitest AA","codigo":"1009220","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":146,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Transferrina","producto":"TRF Turbitest AA","codigo":"1009659","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":147,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Transferrina","producto":"TRF Turbitest AA","codigo":"1009347","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":148,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"APO A-I","producto":"APO A-I Turbitest AA","codigo":"1009639","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":149,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"APO A-I","producto":"APO A-I Turbitest AA","codigo":"1009361","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":150,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"APO B","producto":"APO B Turbitest AA","codigo":"1009640","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":151,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"APO B","producto":"APO B Turbitest AA","codigo":"1009362","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":152,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Haptoglobina","producto":"Haptoglobin Turbitest AA","codigo":"1009649","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":153,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Haptoglobina","producto":"Haptoglobin Turbitest AA","codigo":"1009354","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":154,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Prealbúmina","producto":"Prealbumin Turbitest AA","codigo":"1009658","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":155,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Prealbúmina","producto":"Prealbumin Turbitest AA","codigo":"1009360","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":156,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Carbamazepina","producto":"Carbamazepine","codigo":"1009685","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"2 x 12 mL + 2 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":157,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Fenitoína","producto":"Phenytoin","codigo":"1009687","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"2 x 17 mL + 2 x 6 mL","stock_actual":0,"stock_minimo":1},{"id":158,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Fenobarbital","producto":"Phenobarbital","codigo":"1009686","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"2 x 17 mL + 2 x 6 mL","stock_actual":0,"stock_minimo":1},{"id":159,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Ácido Valproico","producto":"Valproic acid","codigo":"1009688","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"2 x 12 mL + 2 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":160,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"α1-antitripsina","producto":"α1-Antitrypsin Turbitest AA","codigo":"1009636","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":161,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"α1-antitripsina","producto":"α1-Antitrypsin Turbitest AA","codigo":"1009351","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":162,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"α2-macroglobulina","producto":"α2-Macroglobulin Turbitest AA","codigo":"1009637","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":163,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"α2-macroglobulina","producto":"α2-Macroglobulin Turbitest AA","codigo":"1009352","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":164,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"AGP","producto":"AGP Turbitest AA","codigo":"1009214","linea":"CB Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":165,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"AGP","producto":"AGP Turbitest AA","codigo":"1009638","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":166,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"AGP","producto":"AGP Turbitest AA","codigo":"1009341","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 60 mL + 1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":167,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Ceruloplasmina","producto":"Ceruloplasmin Turbitest AA","codigo":"1009645","linea":"CMD Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":168,"seccion":"Química Clínica","subseccion":"Turbidimetría","analito":"Ceruloplasmina","producto":"Ceruloplasmin Turbitest AA","codigo":"1009357","linea":"CT Series","metodo":"Turbidimétrico","presentacion":"1 x 50 mL + 1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":169,"seccion":"Hemostasia","subseccion":"Pruebas Globales","analito":"Fibrinógeno","producto":"Fibrinógeno","codigo":"1705006","linea":"-","metodo":"Coagulométrico","presentacion":"10 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":170,"seccion":"Hemostasia","subseccion":"Pruebas Globales","analito":"Tiempo de Protrombina","producto":"Prothrombin Time Plus","codigo":"1705027","linea":"-","metodo":"Coagulométrico","presentacion":"10 x 4 mL","stock_actual":0,"stock_minimo":1},{"id":171,"seccion":"Hemostasia","subseccion":"Pruebas Globales","analito":"Tiempo de Protrombina","producto":"Soluplastín","codigo":"1705005","linea":"-","metodo":"Coagulométrico","presentacion":"10 x 4 mL","stock_actual":0,"stock_minimo":1},{"id":172,"seccion":"Hemostasia","subseccion":"Pruebas Globales","analito":"Tiempo de Protrombina","producto":"Soluplastín","codigo":"1705001","linea":"-","metodo":"Coagulométrico","presentacion":"10 x 2 mL","stock_actual":0,"stock_minimo":1},{"id":173,"seccion":"Hemostasia","subseccion":"Pruebas Globales","analito":"Tiempo de Trombina","producto":"Tiempo de Trombina","codigo":"1705009","linea":"-","metodo":"Coagulométrico","presentacion":"6 x 2 o 3 mL","stock_actual":0,"stock_minimo":1},{"id":174,"seccion":"Hemostasia","subseccion":"Pruebas Globales","analito":"KPTT (APTT)","producto":"APTTest","codigo":"1705002","linea":"-","metodo":"Coagulométrico","presentacion":"6 x 2,5 mL A + 1 x 15 mL B","stock_actual":0,"stock_minimo":1},{"id":175,"seccion":"Hemostasia","subseccion":"Pruebas Globales","analito":"KPTT (APTT)","producto":"APTTest elágico","codigo":"1705004","linea":"-","metodo":"Coagulométrico","presentacion":"6 x 2,5 mL A + 1 x 15 mL B","stock_actual":0,"stock_minimo":1},{"id":176,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Antitrombina III","producto":"Chrom ATIII","codigo":"1705012","linea":"-","metodo":"Cromogénico","presentacion":"1 x 20 mL A + 1 x 8 mL B + 2 x 25 mL C","stock_actual":0,"stock_minimo":1},{"id":177,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"APTT sensible a anticoagulante lúpico","producto":"APTT ellagic","codigo":"1705010","linea":"-","metodo":"Coagulométrico","presentacion":"2 x 4 mL A + 1 x 8 mL B","stock_actual":0,"stock_minimo":1},{"id":178,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Anticoagulante Lúpico Confirmatorio","producto":"LA Confirm","codigo":"1705024","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":179,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Dímero D","producto":"D-Dimer Turbitest AA","codigo":"1705031","linea":"-","metodo":"Turbidimétrico","presentacion":"4 mL A + 4 mL B + 4 mL C + 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":180,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Factor II","producto":"Factor II Deficient Plasma","codigo":"1705014","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":181,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Factor V","producto":"Factor V Deficient Plasma","codigo":"1705015","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":182,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Factor VII","producto":"Factor VII Deficient Plasma","codigo":"1705016","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":183,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Factor VIII","producto":"Factor VIII Deficient Plasma","codigo":"1705017","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":184,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Factor IX","producto":"Factor IX Deficient Plasma","codigo":"1705018","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":185,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Factor X","producto":"Factor X Deficient Plasma","codigo":"1705019","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":186,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Factor XI","producto":"Factor XI Deficient Plasma","codigo":"1705020","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":187,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Factor XII","producto":"Factor XII Deficient Plasma","codigo":"1705021","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 1 mL","stock_actual":0,"stock_minimo":1},{"id":188,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Proteína C","producto":"Chrom Protein C","codigo":"1705013","linea":"-","metodo":"Cromogénico","presentacion":"3 x 1 mL A + 3 x 1 mL B + 1 x 60 mL C + 3 x 1 mL cal","stock_actual":0,"stock_minimo":1},{"id":189,"seccion":"Hemostasia","subseccion":"Pruebas Especiales","analito":"Anticoagulante Lúpico Screening","producto":"LA Screen","codigo":"1705023","linea":"-","metodo":"Coagulométrico","presentacion":"5 x 2 mL","stock_actual":0,"stock_minimo":1},{"id":190,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Antígenos Febriles Brucella","producto":"Antígenos Febriles Brucella (Huddleson)","codigo":"1503151","linea":"-","metodo":"Aglutinación en placa","presentacion":"1 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":191,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Antígenos Febriles Salmonella","producto":"Antígenos Febriles Salmonella (Widal)","codigo":"1863151","linea":"-","metodo":"Aglutinación en placa","presentacion":"4 x 5 mL","stock_actual":0,"stock_minimo":1},{"id":192,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"ASO","producto":"ASO látex","codigo":"1073151","linea":"-","metodo":"Aglutinación en placa","presentacion":"50 test","stock_actual":0,"stock_minimo":1},{"id":193,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Chagas","producto":"Chagatest HAI","codigo":"1293205","linea":"-","metodo":"HAI","presentacion":"96 test x 5 títulos","stock_actual":0,"stock_minimo":1},{"id":194,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Factor Reumatoideo","producto":"Artritest directo","codigo":"1103152","linea":"-","metodo":"Aglutinación en placa","presentacion":"50 test","stock_actual":0,"stock_minimo":1},{"id":195,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"hCG","producto":"Fecuntest directo","codigo":"1323152","linea":"-","metodo":"Aglutinación en placa","presentacion":"50 test","stock_actual":0,"stock_minimo":1},{"id":196,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Mononucleosis Infecciosa","producto":"Monoslide","codigo":"1593151","linea":"-","metodo":"Aglutinación en placa","presentacion":"100 test","stock_actual":0,"stock_minimo":1},{"id":197,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"PCR","producto":"PCR látex directo","codigo":"1683152","linea":"-","metodo":"Aglutinación en placa","presentacion":"50 test","stock_actual":0,"stock_minimo":1},{"id":198,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Sífilis","producto":"VDRL test","codigo":"1853151","linea":"-","metodo":"Floculación","presentacion":"250 test (1 x 5,5 mL)","stock_actual":0,"stock_minimo":1},{"id":199,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Sífilis","producto":"RPR slide test","codigo":"1853154","linea":"-","metodo":"Floculación","presentacion":"250 test","stock_actual":0,"stock_minimo":1},{"id":200,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Toxoplasmosis","producto":"Toxotest HAI","codigo":"1743201","linea":"-","metodo":"HAI","presentacion":"80 test","stock_actual":0,"stock_minimo":1},{"id":201,"seccion":"Inmunología","subseccion":"Placa - Microplaca","analito":"Toxoplasmosis","producto":"Toxotest látex","codigo":"1743151","linea":"-","metodo":"Aglutinación en placa","presentacion":"100 test","stock_actual":0,"stock_minimo":1},{"id":202,"seccion":"Inmunología","subseccion":"ELISA","analito":"Chagas","producto":"Chagatest ELISA lisado","codigo":"1293096","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":203,"seccion":"Inmunología","subseccion":"ELISA","analito":"Chagas","producto":"Chagatest ELISA recombinante v.3.0","codigo":"1293254","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":204,"seccion":"Inmunología","subseccion":"ELISA","analito":"Chagas","producto":"Chagatest ELISA recombinante v.4.0","codigo":"1293257","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":205,"seccion":"Inmunología","subseccion":"ELISA","analito":"HBV (HBsAg)","producto":"HBsAg ELISA","codigo":"1483254","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":206,"seccion":"Inmunología","subseccion":"ELISA","analito":"HBV (anti-HBc)","producto":"Hepatitis B (anti-HBc) ELISA","codigo":"1483255","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":207,"seccion":"Inmunología","subseccion":"ELISA","analito":"HCV","producto":"HCV ELISA 3ª Generación","codigo":"1483258","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":208,"seccion":"Inmunología","subseccion":"ELISA","analito":"HIV","producto":"HIV 1+2 ELISA 3ª Generación","codigo":"1723096","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":209,"seccion":"Inmunología","subseccion":"ELISA","analito":"HIV","producto":"HIV Ag/Ac ELISA 4ª Generación","codigo":"1723451","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":210,"seccion":"Inmunología","subseccion":"ELISA","analito":"HTLV","producto":"HTLV I+II ELISA recombinante v.4.0","codigo":"1671096","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":211,"seccion":"Inmunología","subseccion":"ELISA","analito":"Sífilis","producto":"Sífilis ELISA recombinante v.4.0","codigo":"1723452","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":212,"seccion":"Inmunología","subseccion":"ELISA","analito":"Toxoplasmosis IgG","producto":"Toxotest IgG ELISA (+Avidity)","codigo":"1743252","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":213,"seccion":"Inmunología","subseccion":"ELISA","analito":"Toxoplasmosis IgM","producto":"Toxotest IgM ELISA","codigo":"1743251","linea":"-","metodo":"ELISA","presentacion":"96 test","stock_actual":0,"stock_minimo":1},{"id":214,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"Chagas","producto":"WL Check Chagas","codigo":"1690011","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":215,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"Dengue - Ag NS1","producto":"WL Check Dengue NS1 Ag","codigo":"1691807","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":216,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"HBsAg","producto":"WL Check HBsAg","codigo":"1691810","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":217,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"hCG","producto":"Fecuntest strips","codigo":"1999705","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":218,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"HCV","producto":"WL Check HCV","codigo":"1691813","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":219,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"HIV","producto":"WL Check HIV 1+2","codigo":"1690019","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":220,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"SARS-CoV-2","producto":"WL Check COVID-19 IgM/IgG","codigo":"1690050","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":221,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"SARS-CoV-2","producto":"WL Check SARS-CoV-2 Ag","codigo":"1690091","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":222,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"Sífilis","producto":"WL Check Syphilis","codigo":"1691819","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":223,"seccion":"Inmunología","subseccion":"Test Rápidos","analito":"Streptococcus pyogenes","producto":"WL Check Strep A","codigo":"1691000","linea":"-","metodo":"Inmunocromatográfico","presentacion":"25 test","stock_actual":0,"stock_minimo":1},{"id":224,"seccion":"Hematología","subseccion":"Grupos Sanguíneos","analito":"Anti-A","producto":"Anti-A monoclonal","codigo":"1443152","linea":"Hemoclasificadores","metodo":"Hemaglutinación","presentacion":"1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":225,"seccion":"Hematología","subseccion":"Grupos Sanguíneos","analito":"Anti-AB","producto":"Anti-AB monoclonal","codigo":"1443153","linea":"Hemoclasificadores","metodo":"Hemaglutinación","presentacion":"1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":226,"seccion":"Hematología","subseccion":"Grupos Sanguíneos","analito":"Anti-B","producto":"Anti-B monoclonal","codigo":"1443154","linea":"Hemoclasificadores","metodo":"Hemaglutinación","presentacion":"1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":227,"seccion":"Hematología","subseccion":"Grupos Sanguíneos","analito":"Anti-D","producto":"Anti-D (Rho) monoclonal","codigo":"1443155","linea":"Hemoclasificadores","metodo":"Hemaglutinación","presentacion":"1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":228,"seccion":"Hematología","subseccion":"Grupos Sanguíneos","analito":"Coombs","producto":"Suero Anti Humano (Poliespecífico)","codigo":"1443156","linea":"Hemoclasificadores","metodo":"Hemaglutinación","presentacion":"1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":229,"seccion":"Hematología","subseccion":"Grupos Sanguíneos","analito":"Albúmina Bovina","producto":"Albúmina Bovina 30%","codigo":"1443151","linea":"Hemoclasificadores","metodo":"-","presentacion":"1 x 10 mL","stock_actual":0,"stock_minimo":1},{"id":230,"seccion":"Hematología","subseccion":"Anticoagulantes","analito":"Anticoagulante (Citrato)","producto":"Anticoagulante TP","codigo":"1895002","linea":"Multipropósito","metodo":"-","presentacion":"6 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":231,"seccion":"Hematología","subseccion":"Anticoagulantes","analito":"Anticoagulante (EDTA)","producto":"Anticoagulante W","codigo":"1898552","linea":"Multipropósito","metodo":"-","presentacion":"6 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":232,"seccion":"Hematología","subseccion":"Anticoagulantes","analito":"Anticoagulante (EDTA-Fluoruro)","producto":"Anticoagulante G","codigo":"1890552","linea":"Multipropósito","metodo":"-","presentacion":"6 x 50 mL","stock_actual":0,"stock_minimo":1},{"id":233,"seccion":"Hematología","subseccion":"Counter XS 20","analito":"Control hematológico","producto":"WL 19 con AA 3 Niveles","codigo":"1474518","linea":"Counter XS 20","metodo":"-","presentacion":"3 x 3 mL","stock_actual":0,"stock_minimo":1},{"id":234,"seccion":"Hematología","subseccion":"Counter XS 20","analito":"Diluyente","producto":"WL Diluent","codigo":"1474537","linea":"Counter XS 20","metodo":"-","presentacion":"1 x 20 L","stock_actual":0,"stock_minimo":1},{"id":235,"seccion":"Hematología","subseccion":"Counter XS 20","analito":"Lisante","producto":"WL Lyse","codigo":"1474540","linea":"Counter XS 20","metodo":"-","presentacion":"1 x 500 mL","stock_actual":0,"stock_minimo":1},{"id":236,"seccion":"Hematología","subseccion":"Counter S30","analito":"Control hematológico","producto":"WL 19 con AA 3 Niveles","codigo":"1474518","linea":"Counter S30","metodo":"-","presentacion":"3 x 3 mL","stock_actual":0,"stock_minimo":1},{"id":237,"seccion":"Hematología","subseccion":"Counter S30","analito":"Diluyente","producto":"WL Diluent","codigo":"1474537","linea":"Counter S30","metodo":"-","presentacion":"1 x 20 L","stock_actual":0,"stock_minimo":1},{"id":238,"seccion":"Hematología","subseccion":"Counter S30","analito":"Lisante","producto":"WL Lyse","codigo":"1474540","linea":"Counter S30","metodo":"-","presentacion":"1 x 500 mL","stock_actual":0,"stock_minimo":1},{"id":239,"seccion":"Hematología","subseccion":"Counter 29","analito":"Control hematológico","producto":"W5DMR02 CBC-Hematology Control","codigo":"9674518","linea":"Counter 29","metodo":"-","presentacion":"6 x 3 mL (3 niveles)","stock_actual":0,"stock_minimo":1},{"id":240,"seccion":"Hematología","subseccion":"Counter 29","analito":"Diluyente","producto":"WL-29D Diluent","codigo":"1475000","linea":"Counter 29","metodo":"-","presentacion":"1 x 20 L","stock_actual":0,"stock_minimo":1},{"id":241,"seccion":"Hematología","subseccion":"Counter 29","analito":"Lisante","producto":"WL-29DIFF Lyse","codigo":"1475001","linea":"Counter 29","metodo":"-","presentacion":"4 x 500 mL","stock_actual":0,"stock_minimo":1},{"id":242,"seccion":"Hematología","subseccion":"Counter 31 AL","analito":"Control hematológico","producto":"W5DMR02 CBC-Hematology Control","codigo":"9474518","linea":"Counter 31 AL","metodo":"-","presentacion":"6 x 3 mL (3 niveles)","stock_actual":0,"stock_minimo":1},{"id":243,"seccion":"Hematología","subseccion":"Counter 31 AL","analito":"Diluyente","producto":"WL-31D Diluent","codigo":"1475003","linea":"Counter 31 AL","metodo":"-","presentacion":"1 x 20 L","stock_actual":0,"stock_minimo":1},{"id":244,"seccion":"Hematología","subseccion":"Counter 31 AL","analito":"Lisante","producto":"WL-31 LEO (I) Lyse","codigo":"1475004","linea":"Counter 31 AL","metodo":"-","presentacion":"4 x 1 L","stock_actual":0,"stock_minimo":1}]
+</script>
+
+<script>
+/* ============ DATA ============ */
+const REACTIVOS = JSON.parse(document.getElementById('reactivos-data').textContent);
+const REACTIVOS_BY_CODE = {};
+REACTIVOS.forEach(r => { REACTIVOS_BY_CODE[r.codigo] = r; });
+
+const STORAGE_KEY = 'stock_v1';
+let stockCache = null; // array of {codigo, lote, vencimiento, cantidad, fecha_alta}
+
+/* ============ STORAGE HELPERS ============ */
+async function loadStock(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value){
+      stockCache = JSON.parse(res.value);
+    } else {
+      stockCache = [];
+    }
+  }catch(e){
+    stockCache = [];
+  }
+  return stockCache;
+}
+async function saveStock(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(stockCache), false);
+  }catch(e){
+    showToast('No se pudo guardar el stock. Reintentá.', true);
+  }
+}
+
+/* ============ TOAST ============ */
+let toastTimer;
+function showToast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.className = 'toast', 2400);
+}
+
+/* ============ TABS ============ */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view === 'stock') renderStockList();
+    if(btn.dataset.view === 'catalog') renderCatalog();
+  });
+});
+
+/* ============ CAMERA / SCANNER ============ */
+let codeReader = null;
+let scanning = false;
+let currentStream = null;
+let zxingLoadPromise = null;
+
+const ZXING_SOURCES = [
+  'https://cdnjs.cloudflare.com/ajax/libs/zxing-library/0.21.3/umd/index.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/zxing-library/0.20.0/index.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/zxing-library/0.19.1/index.min.js'
+];
+
+function loadScript(src, timeoutMs){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    let done = false;
+    const timer = setTimeout(()=>{
+      if(!done){ done = true; reject(new Error('timeout')); }
+    }, timeoutMs || 8000);
+    s.onload = ()=>{
+      if(done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    s.onerror = ()=>{
+      if(done) return;
+      done = true;
+      clearTimeout(timer);
+      reject(new Error('error cargando script'));
+    };
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureZXingLoaded(){
+  if(typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader) return true;
+  if(zxingLoadPromise) return zxingLoadPromise;
+  zxingLoadPromise = (async ()=>{
+    for(const src of ZXING_SOURCES){
+      try{
+        await loadScript(src, 9000);
+        if(typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader) return true;
+      }catch(e){ /* probamos la siguiente fuente */ }
+    }
+    return false;
+  })();
+  return zxingLoadPromise;
+}
+
+async function startCamera(){
+  const video = document.getElementById('video');
+  const placeholder = document.getElementById('camPlaceholder');
+  const frame = document.getElementById('scanFrame');
+  const btn = document.getElementById('btnCam');
+
+  btn.disabled = true;
+  btn.textContent = 'Cargando módulo de escaneo...';
+
+  const ready = await ensureZXingLoaded();
+  if(!ready){
+    showToast('No se pudo cargar el módulo de escaneo. Usá la búsqueda manual.', true);
+    btn.textContent = '▶ Iniciar cámara';
+    btn.disabled = false;
+    return;
+  }
+
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showToast('Este navegador no permite acceso a la cámara en este contexto.', true);
+    btn.textContent = '▶ Iniciar cámara';
+    btn.disabled = false;
+    return;
+  }
+
+  try{
+    btn.textContent = 'Iniciando cámara...';
+    codeReader = new ZXing.BrowserMultiFormatReader();
+
+    const constraints = {
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    };
+
+    video.style.display = 'block';
+    placeholder.style.display = 'none';
+    frame.classList.add('show');
+
+    await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
+      if(result){
+        handleScanResult(result.getText());
+      }
+    });
+
+    currentStream = video.srcObject;
+    scanning = true;
+    btn.textContent = '■ Detener cámara';
+    btn.classList.add('stop');
+    btn.disabled = false;
+
+  }catch(e){
+    let msg = 'No se pudo iniciar la cámara.';
+    if(e && e.name === 'NotAllowedError') msg = 'Permiso de cámara denegado. Habilitalo en el ícono de información del navegador.';
+    else if(e && e.name === 'NotFoundError') msg = 'No se encontró ninguna cámara en este dispositivo.';
+    else if(e && e.name === 'NotReadableError') msg = 'La cámara está siendo usada por otra app. Cerrala e intentá de nuevo.';
+    showToast(msg, true);
+    video.style.display = 'none';
+    placeholder.style.display = 'flex';
+    frame.classList.remove('show');
+    btn.textContent = '▶ Iniciar cámara';
+    btn.classList.remove('stop');
+    btn.disabled = false;
+  }
+}
+
+function stopCamera(){
+  const video = document.getElementById('video');
+  const placeholder = document.getElementById('camPlaceholder');
+  const frame = document.getElementById('scanFrame');
+  const btn = document.getElementById('btnCam');
+
+  if(codeReader){
+    try{ codeReader.reset(); }catch(e){}
+    codeReader = null;
+  }
+  if(currentStream){
+    currentStream.getTracks().forEach(t=>t.stop());
+    currentStream = null;
+  }
+  video.style.display = 'none';
+  placeholder.style.display = 'flex';
+  frame.classList.remove('show');
+  scanning = false;
+  btn.textContent = '▶ Iniciar cámara';
+  btn.classList.remove('stop');
+}
+
+document.getElementById('btnCam').addEventListener('click', ()=>{
+  if(scanning){ stopCamera(); } else { startCamera(); }
+});
+
+let lastScan = '';
+let lastScanTime = 0;
+function handleScanResult(text){
+  const now = Date.now();
+  // debounce duplicate scans
+  if(text === lastScan && (now - lastScanTime) < 2500) return;
+  lastScan = text;
+  lastScanTime = now;
+
+  // vibrate if available
+  if(navigator.vibrate) navigator.vibrate(80);
+
+  lookupCode(text.trim());
+}
+
+/* ============ MANUAL SEARCH ============ */
+document.getElementById('btnManual').addEventListener('click', ()=>{
+  const v = document.getElementById('manualCode').value.trim();
+  if(v) lookupCode(v);
+});
+document.getElementById('manualCode').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){
+    const v = e.target.value.trim();
+    if(v) lookupCode(v);
+  }
+});
+
+/* ============ LOOKUP & RESULT ============ */
+let currentMatch = null;
+
+function lookupCode(rawCode){
+  // try exact match, then try stripping leading zeros / common EAN prefixes
+  let match = REACTIVOS_BY_CODE[rawCode];
+  if(!match){
+    // try removing non-digits
+    const digits = rawCode.replace(/\D/g,'');
+    match = REACTIVOS_BY_CODE[digits];
+  }
+  if(!match){
+    // try finding code as substring (some barcodes embed the catalog code)
+    match = REACTIVOS.find(r => rawCode.includes(r.codigo));
+  }
+
+  currentMatch = match || null;
+  renderResult(rawCode, match);
+}
+
+function renderResult(rawCode, match){
+  const panel = document.getElementById('resultPanel');
+  panel.classList.add('show');
+
+  if(match){
+    panel.classList.remove('notfound');
+    document.getElementById('rCode').textContent = 'COD ' + match.codigo;
+    document.getElementById('rProducto').textContent = match.producto;
+    document.getElementById('rMeta').innerHTML =
+      `<b>${match.analito}</b> · ${match.presentacion}<br>${match.metodo}`;
+    const tags = document.getElementById('rTags');
+    tags.innerHTML = '';
+    [match.seccion, match.subseccion, match.linea].filter(x=>x && x!=='-').forEach(t=>{
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.textContent = t;
+      tags.appendChild(span);
+    });
+    document.getElementById('fLote').value = '';
+    document.getElementById('fVto').value = '';
+    document.getElementById('fQty').value = 1;
+    document.getElementById('fLote').focus();
+  } else {
+    panel.classList.add('notfound');
+    document.getElementById('nfCode').textContent = rawCode || '(vacío)';
+    document.getElementById('nfResults').innerHTML = '';
+  }
+}
+
+document.getElementById('nfSearch').addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  const box = document.getElementById('nfResults');
+  if(q.length < 2){ box.innerHTML=''; return; }
+  const results = REACTIVOS.filter(r =>
+    r.analito.toLowerCase().includes(q) ||
+    r.producto.toLowerCase().includes(q) ||
+    r.codigo.includes(q)
+  ).slice(0, 12);
+  box.innerHTML = results.map(r => `
+    <div class="cat-item" data-code="${r.codigo}">
+      <div class="ci-name"><b>${r.producto}</b><span>${r.analito} · ${r.presentacion} · ${r.linea}</span></div>
+      <div class="ci-code">${r.codigo}</div>
+    </div>
+  `).join('') || '<div class="helptext">Sin resultados.</div>';
+
+  box.querySelectorAll('.cat-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      lookupCode(el.dataset.code);
+    });
+  });
+});
+
+/* qty stepper */
+document.getElementById('qtyMinus').addEventListener('click', ()=>{
+  const inp = document.getElementById('fQty');
+  inp.value = Math.max(1, parseInt(inp.value||1) - 1);
+});
+document.getElementById('qtyPlus').addEventListener('click', ()=>{
+  const inp = document.getElementById('fQty');
+  inp.value = parseInt(inp.value||1) + 1;
+});
+
+/* ============ ADD TO STOCK ============ */
+document.getElementById('btnAddStock').addEventListener('click', async ()=>{
+  if(!currentMatch) return;
+  const lote = document.getElementById('fLote').value.trim();
+  const vto = document.getElementById('fVto').value;
+  const qty = parseInt(document.getElementById('fQty').value) || 1;
+
+  if(!stockCache) await loadStock();
+
+  // find existing entry with same code + lote
+  let entry = stockCache.find(s => s.codigo === currentMatch.codigo && s.lote === lote);
+  if(entry){
+    entry.cantidad += qty;
+    entry.vencimiento = vto || entry.vencimiento;
+  } else {
+    stockCache.push({
+      codigo: currentMatch.codigo,
+      lote: lote || '(sin lote)',
+      vencimiento: vto || '',
+      cantidad: qty,
+      fecha_alta: new Date().toISOString().slice(0,10)
+    });
+  }
+  await saveStock();
+  showToast(`✓ Sumado: ${currentMatch.producto} (+${qty})`);
+
+  // reset for next scan
+  document.getElementById('resultPanel').classList.remove('show');
+  document.getElementById('manualCode').value = '';
+  currentMatch = null;
+});
+
+/* ============ STOCK LIST VIEW ============ */
+async function renderStockList(filter){
+  if(!stockCache) await loadStock();
+  const list = document.getElementById('stockList');
+  filter = (filter || '').toLowerCase();
+
+  const enriched = stockCache.map(s => ({...s, ref: REACTIVOS_BY_CODE[s.codigo]}))
+    .filter(s => s.ref);
+
+  const filtered = filter
+    ? enriched.filter(s =>
+        s.ref.producto.toLowerCase().includes(filter) ||
+        s.ref.analito.toLowerCase().includes(filter) ||
+        s.codigo.includes(filter) ||
+        s.lote.toLowerCase().includes(filter))
+    : enriched;
+
+  // summary
+  const totalItems = enriched.length;
+  const totalUnits = enriched.reduce((a,s)=>a+s.cantidad,0);
+  const lowCount = enriched.filter(s => s.cantidad <= (s.ref.stock_minimo||1)).length;
+  document.getElementById('sumItems').textContent = totalItems;
+  document.getElementById('sumUnits').textContent = totalUnits;
+  document.getElementById('sumLow').textContent = lowCount;
+
+  if(filtered.length === 0){
+    list.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+      <div>${stockCache.length === 0 ? 'Todavía no escaneaste ningún reactivo.<br>Andá a la pestaña Escanear para empezar.' : 'No hay resultados para esa búsqueda.'}</div>
+    </div>`;
+    return;
+  }
+
+  filtered.sort((a,b)=> a.ref.producto.localeCompare(b.ref.producto));
+
+  list.innerHTML = filtered.map((s, idx) => {
+    const low = s.cantidad <= (s.ref.stock_minimo||1);
+    const vtoStr = s.vencimiento ? `· Vto ${s.vencimiento}` : '';
+    return `
+    <div class="stock-item ${low?'low':''}" data-codigo="${s.codigo}" data-lote="${s.lote}">
+      <div class="sw">
+        <h4>${s.ref.producto}</h4>
+        <div class="sub">${s.ref.codigo} · Lote ${s.lote} ${vtoStr}</div>
+      </div>
+      <div class="qtybadge">${s.cantidad}</div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.stock-item').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const codigo = el.dataset.codigo;
+      const lote = el.dataset.lote;
+      const entry = stockCache.find(s=>s.codigo===codigo && s.lote===lote);
+      if(!entry) return;
+      const action = prompt(`${REACTIVOS_BY_CODE[codigo].producto}\nLote: ${lote}\nCantidad actual: ${entry.cantidad}\n\nIngresá la nueva cantidad (o 0 para eliminar):`, entry.cantidad);
+      if(action === null) return;
+      const newQty = parseInt(action);
+      if(isNaN(newQty)) return;
+      if(newQty <= 0){
+        stockCache = stockCache.filter(s => !(s.codigo===codigo && s.lote===lote));
+        showToast('Lote eliminado del stock');
+      } else {
+        entry.cantidad = newQty;
+        showToast('Cantidad actualizada');
+      }
+      await saveStock();
+      renderStockList(document.getElementById('stockSearch').value);
+    });
+  });
+}
+
+document.getElementById('stockSearch').addEventListener('input', (e)=>{
+  renderStockList(e.target.value);
+});
+
+/* ============ CATALOG VIEW ============ */
+function renderCatalog(filter){
+  filter = (filter || '').toLowerCase();
+  const list = document.getElementById('catList');
+
+  const filtered = filter
+    ? REACTIVOS.filter(r =>
+        r.producto.toLowerCase().includes(filter) ||
+        r.analito.toLowerCase().includes(filter) ||
+        r.codigo.includes(filter) ||
+        r.seccion.toLowerCase().includes(filter))
+    : REACTIVOS;
+
+  if(filtered.length === 0){
+    list.innerHTML = `<div class="empty-state">Sin resultados para esa búsqueda.</div>`;
+    return;
+  }
+
+  // group by seccion for browse mode, flat for search
+  if(!filter){
+    const groups = {};
+    filtered.forEach(r=>{
+      groups[r.seccion] = groups[r.seccion] || [];
+      groups[r.seccion].push(r);
+    });
+    list.innerHTML = Object.keys(groups).map(sec => `
+      <div class="cat-section">
+        <h3>${sec} (${groups[sec].length})</h3>
+        ${groups[sec].slice(0,0).map(()=>'').join('')}
+        <div class="helptext" style="margin-bottom:8px;">Usá el buscador para filtrar dentro de esta sección.</div>
+      </div>
+    `).join('');
+    return;
+  }
+
+  list.innerHTML = filtered.slice(0, 150).map(r => `
+    <div class="cat-item" data-code="${r.codigo}">
+      <div class="ci-name"><b>${r.producto}</b><span>${r.analito} · ${r.presentacion} · ${r.linea}</span></div>
+      <div class="ci-code">${r.codigo}</div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.cat-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelector('[data-view="scan"]').click();
+      lookupCode(el.dataset.code);
+    });
+  });
+}
+
+document.getElementById('catSearch').addEventListener('input', (e)=>{
+  renderCatalog(e.target.value);
+});
+
+/* ============ INIT ============ */
+(async function init(){
+  await loadStock();
+  renderCatalog('');
+  ensureZXingLoaded();
+})();
+</script>
+</body>
+</html>
